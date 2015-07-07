@@ -38,7 +38,7 @@ else {
 
 We can represent the structure of this program using these "production rules":
 
-```
+```js
 Block => if (Expression) { Block } else { Block }
 Block => ;
 Expression => true
@@ -55,12 +55,12 @@ and nonterminals until you have a string of nothing but nonterminals.
 So here's how we'd generate the above program. Let's say we start with just
 a Block...
 
-```
+```js
 Block
 ```
 Now replace it with the "if rule" because empty programs are boring:
 
-```
+```js
 if (Expression) {
     Block
 }
@@ -71,7 +71,7 @@ else {
 
 Replace the Expression with `true` (we could have done `false` too):
 
-```
+```js
 if (true) {
     Block
 }
@@ -82,7 +82,7 @@ else {
 
 Replace the first Block with another `if` block, and the second with an empty block:
 
-```
+```js
 if (true) {
     if (Expression) {
         Block
@@ -100,5 +100,6 @@ From here, it's just recursively applying the same rules until we reach
 the desired program.
 
 **Footnotes**:
+
 1. Human language is *at least* context free; in some circumstances it is too
 complex to be modeled as a context-free language. But we can model it this way.
