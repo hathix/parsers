@@ -8,11 +8,11 @@ var _ = require('lodash');
 
 // unions all the component arrays of a list.
 // _.squish([[1,2],[2,3]]) == [1,2,3]
-_.squish = function(list) {
+_.mixin({'squish': function(list) {
     return _.reduce(list, function(a, b) {
         return _.union(a, b);
     }, []);
-};
+}});
 
 
 // define the language
