@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/hathix/parsers/issues"
   },
-  "homepage": "https://github.com/hathix/parsers#readme"
+  "homepage": "https://github.com/hathix/parsers#readme",
+  "dependencies": {
+    "lodash": "^3.10.0"
+  }
 }
