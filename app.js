@@ -79,10 +79,6 @@ function first(symbol) {
     }
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> Added basic first set creation
 /**
  * For a map of nonterminal => first set, returns true if no first set
  * contains any nonterminals.
