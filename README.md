@@ -1,4 +1,4 @@
-# Context-Free Parsers in CoffeeScript
+# Context-Free Parsers
 
 I'm interested in computational linguistics so here I'm trying my hand
 at writing some parsers. This is purely as an exercise.
@@ -102,4 +102,11 @@ the desired program.
 **Footnotes**:
 
 1. Human language is *at least* context free; in some circumstances it is too
-complex to be modeled as a context-free language. But we can model it this way.
+complex to be modeled as a context-free language. But for simplicity we often
+model it that way anyway.
+
+## Running
+
+```
+node app.js
+```

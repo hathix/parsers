@@ -1,0 +1,19 @@
+{
+  "name": "parsers",
+  "version": "0.0.1",
+  "description": "Experimental context-free parsers",
+  "main": "build/index.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hathix/parsers.git"
+  },
+  "author": "Neel Mehta",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hathix/parsers/issues"
+  },
+  "homepage": "https://github.com/hathix/parsers#readme"
+}
