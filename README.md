@@ -110,3 +110,9 @@ model it that way anyway.
 ```
 node app.js
 ```
+
+## References
+
+* http://research.microsoft.com/en-us/um/people/abegel/cs164/ll1.html
+* http://www.jflap.org/tutorial/grammar/LL/index.html
+* https://en.wikipedia.org/wiki/LL_parser#Constructing_an_LL.28k.29_parsing_table
