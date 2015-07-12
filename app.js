@@ -28,69 +28,6 @@ _.mixin({
     }
 })
 
-
-// define the language
-var TERMINALS = [
-    "a",
-    "b",
-    "c"
-];
-
-var NONTERMINALS = [
-    "S",
-    "A",
-    "B"
-];
-
-// special symbols
-var START = "S";
-var END = "$";
-var EMPTY = "0";
-
-var SYMBOLS = _.union(TERMINALS, NONTERMINALS, [START, END, EMPTY]);
-
-var PRODUCTION_RULES = [{
-    left: "S",
-    right: ["a", "A", "B", "b"]
-}, {
-    left: "A",
-    right: ["a", "A", "c"]
-}, {
-    left: "A",
-    right: ["0"]
-}, {
-    left: "B",
-    right: ["b", "B"]
-}, {
-    left: "B",
-    right: ["c"]
-}];
-
-// generate parsing table
-
-// find the first-set of every nonterminal, which is the set of all
-// terminals that could appear as the first character in the expanded
-// form of the terminal.
-// we represent this as Fi(A) for nonterminals and initialize it as itself
-// (i.e. Fi(A) = A); this represents the valid production rule A => A.
-// for a terminal a, Fi(a) = a.
-// e.g. if A => B | x, then Fi(A) = union(Fi(B), Fi(x)) = union(Fi(B), x)
-var firstSetMap = {};
-_.each(NONTERMINALS, function(nonterminal) {
-    firstSetMap[nonterminal] = [nonterminal];
-});
-
-// find the follow-set of every nonterminal, which is the set of all
-// terminals that could appear directly after the nonterminal.
-// we represent this as Fo(A) for nonterminals and initialize it as itself
-// (i.e. Fo(A) = A), which isn't actually correct but sets the stage for
-// future function calls.
-// for a terminal a, Fo(a) = a.
-var followSetMap = {};
-_.each(NONTERMINALS, function(nonterminal) {
-    followSetMap[nonterminal] = [nonterminal];
-});
-
 /**
  * Given a symbol, finds one iteration toward its first set.
  * For nonterminals, this involves looking at all possible production rules
@@ -163,6 +100,70 @@ function hasNoNonterminals(firstSetMap) {
         return _.intersection(NONTERMINALS, firstSet).length > 0;
     }).length === 0;
 }
+
+
+// define the language
+var TERMINALS = [
+    "a",
+    "b",
+    "c"
+];
+
+var NONTERMINALS = [
+    "S",
+    "A",
+    "B"
+];
+
+// special symbols
+var START = "S";
+var END = "$";
+var EMPTY = "0";
+
+var SYMBOLS = _.union(TERMINALS, NONTERMINALS, [START, END, EMPTY]);
+
+var PRODUCTION_RULES = [{
+    left: "S",
+    right: ["a", "A", "B", "b"]
+}, {
+    left: "A",
+    right: ["a", "A", "c"]
+}, {
+    left: "A",
+    right: ["0"]
+}, {
+    left: "B",
+    right: ["b", "B"]
+}, {
+    left: "B",
+    right: ["c"]
+}];
+
+
+// generate parsing table
+
+// find the first-set of every nonterminal, which is the set of all
+// terminals that could appear as the first character in the expanded
+// form of the terminal.
+// we represent this as Fi(A) for nonterminals and initialize it as itself
+// (i.e. Fi(A) = A); this represents the valid production rule A => A.
+// for a terminal a, Fi(a) = a.
+// e.g. if A => B | x, then Fi(A) = union(Fi(B), Fi(x)) = union(Fi(B), x)
+var firstSetMap = {};
+_.each(NONTERMINALS, function(nonterminal) {
+    firstSetMap[nonterminal] = [nonterminal];
+});
+
+// find the follow-set of every nonterminal, which is the set of all
+// terminals that could appear directly after the nonterminal.
+// we represent this as Fo(A) for nonterminals and initialize it as itself
+// (i.e. Fo(A) = A), which isn't actually correct but sets the stage for
+// future function calls.
+// for a terminal a, Fo(a) = a.
+var followSetMap = {};
+_.each(NONTERMINALS, function(nonterminal) {
+    followSetMap[nonterminal] = [nonterminal];
+});
 
 // repeatedly simplify the first sets until no first set has any
 // nonterminals left
