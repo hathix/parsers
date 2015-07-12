@@ -1,7 +1,6 @@
 var _ = require('lodash');
 
 /* LL(1) parser, from https://en.wikipedia.org/wiki/LL_parser
- * We'll use the simple `(a+a)` language from that Wikipedia article.
  */
 
 // utility functions
@@ -26,14 +25,15 @@ _.mixin({
             return memo;
         }, []);
     }
-})
+});
 
 /**
- * Given a symbol, finds one iteration toward its first set.
- * For nonterminals, this involves looking at all possible production rules
- * where it is on the left and returning the first symbol therein.
+ * Returns the first set of a symbol.
+ * For a terminal a, Fi(a) = [a].
+ * For a nonterminal A, this recursively reduces A into terminals by following
+ * production rules.
  */
-function first(symbol) {
+function firstOfSymbol(symbol) {
     if (_.contains(NONTERMINALS, symbol)) {
         // find production rules that have this nonterminal on left side
         var validRules = _.filter(PRODUCTION_RULES, function(rule) {
@@ -41,28 +41,32 @@ function first(symbol) {
         });
         // find those rules' first symbols
         var firsts = _.map(validRules, function(rule) {
-            return rule.right[0];
+            return firstOfProductionRule(rule);
         });
-        return _.union(firsts);
-    } else if (_.contains(TERMINALS, symbol)) {
-        // Fi(a) = a
-        return [symbol];
+        return _.squish(firsts);
     } else {
-        // symbol = epsilon (empty string)
         return [symbol];
     }
 }
 
 /**
- * Given a symbol, finds one iteration toward its follow set.
- * For nonterminals, the involves looking at all possible production rules
- * where it is on the right and returning the first symbol immediately
- * thereafter, if one exists.
+ * Returns the first terminal symbol on the right side of a production rule.
+ * For a rule A => w, this returns Fi(w).
  */
-function follow(symbol) {
+function firstOfProductionRule(rule) {
+    return firstOfSymbol(_.head(rule.right));
+}
+
+/**
+ * Returns the follow set of a symbol.
+ * For a terminal a, Fo(a) = [a].
+ * For a nonterminal A, this recursively reduces A into terminals by following
+ * production rules.
+ */
+function followOfSymbol(symbol) {
     if (symbol === START) {
-        // by definition, Fo(S) = epsilon
-        return [EMPTY];
+        // by definition, Fo(S) = $, where S = start symbol and $ = end symbol
+        return [END];
     } else if (_.contains(NONTERMINALS, symbol)) {
         // find production rules that have this nonterminal on right side
         // (but not at the very end)
@@ -71,8 +75,9 @@ function follow(symbol) {
                 _.slice(rule.right, 0, rule.right.length - 1),
                 symbol);
         });
-        // find the symbols immediately to the right of that nonterminal
-        var follows = _.map(validRules, function(rule) {
+        // find the symbols (terminal or nonterminal)
+        // immediately to the right of the target symbol
+        var unresolvedFollows = _.squish(_.map(validRules, function(rule) {
             var symbolIndices = _.indicesOf(rule.right, symbol);
             var rightIndices = _.map(symbolIndices, function(index) {
                 return index + 1;
@@ -80,25 +85,12 @@ function follow(symbol) {
             return _.map(rightIndices, function(index) {
                 return rule.right[index];
             });
-        });
-        return _.squish(follows);
-    } else if (_.contains(TERMINALS, symbol)) {
-        // Fo(a) = a
-        return [symbol];
+        }));
+        // recursively simplify the nonterminals in this follow set
+        return _.squish(_.map(unresolvedFollows, followOfSymbol));
     } else {
-        // symbol = epsilon (empty string)
         return [symbol];
     }
-}
-
-/**
- * For a map of nonterminal => first set, returns true if no first set
- * contains any nonterminals.
- */
-function hasNoNonterminals(firstSetMap) {
-    return _.filter(firstSetMap, function(firstSet) {
-        return _.intersection(NONTERMINALS, firstSet).length > 0;
-    }).length === 0;
 }
 
 
@@ -142,49 +134,44 @@ var PRODUCTION_RULES = [{
 
 // generate parsing table
 
-// find the first-set of every nonterminal, which is the set of all
-// terminals that could appear as the first character in the expanded
-// form of the terminal.
-// we represent this as Fi(A) for nonterminals and initialize it as itself
-// (i.e. Fi(A) = A); this represents the valid production rule A => A.
-// for a terminal a, Fi(a) = a.
-// e.g. if A => B | x, then Fi(A) = union(Fi(B), Fi(x)) = union(Fi(B), x)
-var firstSetMap = {};
-_.each(NONTERMINALS, function(nonterminal) {
-    firstSetMap[nonterminal] = [nonterminal];
+// find the first set of every production rule, which is the set of all
+// terminals that could appear as the first character of that production rule.
+// for a production rule w, this is Fi(w).
+// e.g. if A => Bc and B => d | e, then Fi(Bc) = union(d, e)
+PRODUCTION_RULES = _.map(PRODUCTION_RULES, function(rule) {
+    return {
+        left: rule.left,
+        right: rule.right,
+        first: firstOfProductionRule(rule)
+    };
+});
+
+// from this find the first-set of every nonterminal, which is the union of
+// all the first sets of all the production rules where the nonterminal appears
+// on the left.
+var firstsOfNonterminals = _.map(NONTERMINALS, function(nonterminal) {
+    var validRules = _.filter(PRODUCTION_RULES, function(rule) {
+        return rule.left === nonterminal;
+    });
+    var firsts = _.map(validRules, function(rule) {
+        return rule.first;
+    });
+    return {
+        symbol: nonterminal,
+        first: _.squish(firsts)
+    };
 });
 
 // find the follow-set of every nonterminal, which is the set of all
 // terminals that could appear directly after the nonterminal.
-// we represent this as Fo(A) for nonterminals and initialize it as itself
-// (i.e. Fo(A) = A), which isn't actually correct but sets the stage for
-// future function calls.
+// we represent this as Fo(A) for nonterminals.
 // for a terminal a, Fo(a) = a.
-var followSetMap = {};
-_.each(NONTERMINALS, function(nonterminal) {
-    followSetMap[nonterminal] = [nonterminal];
+var followsOfNonterminals = _.map(NONTERMINALS, function(nonterminal) {
+    return {
+        symbol: nonterminal,
+        follow: followOfSymbol(nonterminal)
+    };
 });
 
-// repeatedly simplify the first sets until no first set has any
-// nonterminals left
-while (!hasNoNonterminals(firstSetMap)) {
-    _.each(NONTERMINALS, function(nonterminal) {
-        firstSetMap[nonterminal] = _.squish(
-            _.map(firstSetMap[nonterminal], first));
-    });
-}
-// do the same with the follow set, with the exception that the start symbol
-// always has a follow set of the end symbol
-while (!hasNoNonterminals(followSetMap)) {
-    _.each(NONTERMINALS, function(nonterminal) {
-        if (nonterminal === START) {
-            followSetMap[nonterminal] = [END];
-        } else {
-            followSetMap[nonterminal] = _.squish(
-                _.map(followSetMap[nonterminal], follow));
-        }
-    });
-}
-
-console.log(firstSetMap);
-console.log(followSetMap);
+console.log(firstsOfNonterminals);
+console.log(followsOfNonterminals);
