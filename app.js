@@ -146,32 +146,26 @@ PRODUCTION_RULES = _.map(PRODUCTION_RULES, function(rule) {
     };
 });
 
-// from this find the first-set of every nonterminal, which is the union of
-// all the first sets of all the production rules where the nonterminal appears
-// on the left.
-var firstsOfNonterminals = _.map(NONTERMINALS, function(nonterminal) {
+/*
+ * From the production rules find the first-set of every nonterminal, which is
+ * the union of all the first sets of all the production rules where the
+ * nonterminal appears on the left.
+ */
+function firstOfNonterminal(nonterminal) {
     var validRules = _.filter(PRODUCTION_RULES, function(rule) {
         return rule.left === nonterminal;
     });
     var firsts = _.map(validRules, function(rule) {
         return rule.first;
     });
-    return {
-        symbol: nonterminal,
-        first: _.squish(firsts)
-    };
-});
+    return _.squish(firsts);
+}
 
-// find the follow-set of every nonterminal, which is the set of all
-// terminals that could appear directly after the nonterminal.
-// we represent this as Fo(A) for nonterminals.
-// for a terminal a, Fo(a) = a.
-var followsOfNonterminals = _.map(NONTERMINALS, function(nonterminal) {
+// compute the first and follow sets of every nonterminal
+var firstAndFollowSets = _.map(NONTERMINALS, function(nonterminal) {
     return {
         symbol: nonterminal,
+        first: firstOfNonterminal(nonterminal),
         follow: followOfSymbol(nonterminal)
     };
 });
-
-console.log(firstsOfNonterminals);
-console.log(followsOfNonterminals);
