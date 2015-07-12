@@ -28,6 +28,26 @@ _.mixin({
 });
 
 /**
+ * Generates a 2D table using the Cartesian cross product of rowValues and
+ * columnValues. For a given (rowValue, columnValue) pair, the cell
+ * [rowLabelFn(rowValue), columnLabelFn(columnValue)] will have the value
+ * cellFn(rowValue, columnValue).
+ */
+function generateTable2d(rowValues, rowLabelFn, columnValues,
+        columnLabelFn, cellFn) {
+    var table = {};
+    _.each(rowValues, function(rowValue) {
+        var currentRow = table[rowLabelFn(rowValue)] = {};
+        _.each(columnValues, function(columnValue) {
+            currentRow[columnLabelFn(columnValue)] =
+                cellFn(rowValue, columnValue);
+        });
+    });
+
+    return table;
+}
+
+/**
  * Returns the first set of a symbol.
  * For a terminal a, Fi(a) = [a].
  * For a nonterminal A, this recursively reduces A into terminals by following
@@ -176,21 +196,28 @@ var nonterminalData = _.map(NONTERMINALS, function(nonterminal) {
 //  - a is in Fi(w), or
 //  - epsilon is in Fi(w) and a is in Fo(A)
 // with an LL(1) parser, T[A,a] is guaranteed to contain at most 1 rule
-// TODO: make this more functional (although hash tables are best done
-// imperatively)
-var parseTable = {};
-_.each(nonterminalData, function(nonterminal) {
-    var currentRow = parseTable[nonterminal.symbol] = {};
-    var validRules = _.filter(PRODUCTION_RULES, function(rule) {
+// here, T[A,a] contains either a rule or null
+var parseTable = generateTable2d(nonterminalData, function(nonterminal) {
+    return nonterminal.symbol;
+}, TERMINALS, function(terminal) {
+    return terminal;
+}, function(nonterminal, terminal) {
+    // find all rules that have this nonterminal on the left...
+    var nonterminalRules = _.filter(PRODUCTION_RULES, function(rule) {
         return rule.left === nonterminal.symbol;
     });
-    _.each(TERMINALS, function(terminal) {
-        _.each(validRules, function(rule) {
-            if (_.includes(rule.first, terminal) || (_.includes(rule.first, EMPTY) && _.includes(nonterminal.follow, terminal))) {
-                currentRow[terminal] = rule;
-            }
-        });
+    // ...and the one that belongs in this cell. Again, there is either 0
+    // or 1 rule that can be here.
+    var validRules = _.filter(nonterminalRules, function(rule) {
+        return _.includes(rule.first, terminal) ||
+            (_.includes(rule.first, EMPTY) &&
+            _.includes(nonterminal.follow, terminal));
     });
+    if (_.isEmpty(validRules)) {
+        return null;
+    } else {
+        return _.head(validRules);
+    }
 });
 
 console.log(JSON.stringify(parseTable));
