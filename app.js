@@ -162,10 +162,35 @@ function firstOfNonterminal(nonterminal) {
 }
 
 // compute the first and follow sets of every nonterminal
-var firstAndFollowSets = _.map(NONTERMINALS, function(nonterminal) {
+var nonterminalData = _.map(NONTERMINALS, function(nonterminal) {
     return {
         symbol: nonterminal,
         first: firstOfNonterminal(nonterminal),
         follow: followOfSymbol(nonterminal)
     };
 });
+
+
+// build parsing table given first and follow sets
+// for table T, T[A,a] contains the rule A => w iff
+//  - a is in Fi(w), or
+//  - epsilon is in Fi(w) and a is in Fo(A)
+// with an LL(1) parser, T[A,a] is guaranteed to contain at most 1 rule
+// TODO: make this more functional (although hash tables are best done
+// imperatively)
+var parseTable = {};
+_.each(nonterminalData, function(nonterminal) {
+    var currentRow = parseTable[nonterminal.symbol] = {};
+    var validRules = _.filter(PRODUCTION_RULES, function(rule) {
+        return rule.left === nonterminal.symbol;
+    });
+    _.each(TERMINALS, function(terminal) {
+        _.each(validRules, function(rule) {
+            if (_.includes(rule.first, terminal) || (_.includes(rule.first, EMPTY) && _.includes(nonterminal.follow, terminal))) {
+                currentRow[terminal] = rule;
+            }
+        });
+    });
+});
+
+console.log(JSON.stringify(parseTable));
