@@ -21,6 +21,6 @@ gulp.task('babel', function(){
 /**
 * Compile es6 on the fly
 */
-gulp.task('serve', function() {
+gulp.task('serve', ['default'], function() {
     gulp.watch(paths.es6, ['babel']);
 });

@@ -3,14 +3,39 @@ let Immutable = require('immutable');
 let Baobab = require('baobab');
 
 let util = require("./util");
-
-/* LL(1) parser, from https://en.wikipedia.org/wiki/LL_parser
- */
-
 util.addLodashUtilities();
 
-// TODO have a production rules class
+/**
+* A rule for context-free grammars that specifies what string of nonterminals
+* and terminals can replace a nonterminal wherever the nonterminal appears.
+* e.g., for "A => aB", wherever "A" appears it can be replaced with "aB".
+*
+*/
+class ProductionRule {
+    /**
+    * Generates a production rule with the given nonterminal (String) on the
+    * arrow's left side and the given string of nonterminals and terminals
+    * (String array) on the right side.
+    * This is represented as A => w.
+    */
+    constructor(left, right){
+        this.left = left;
+        this.right = right;
+    }
 
+    toString(){
+        return this.left + "=>" + this.right.join(" ");
+    }
+}
+
+/**
+ * An LL(1) parser, a top-down parser for a subset of context-free languages.
+ * It uses a queue of input characters, a stack of active symbols, and a
+ * production table that determines what action to take given a certain input
+ * and top stack symbol, ultimately producing an abstract syntax tree out of
+ * a string of terminal symbols.
+ * See https://en.wikipedia.org/wiki/LL_parser.
+ */
 class LL1Parser {
     constructor(){
         // define the language
@@ -27,37 +52,24 @@ class LL1Parser {
             "B"
         ];
 
-        const RAW_PRODUCTION_RULES = [{
-            left: "S",
-            right: ["a", "A", "B", "b"]
-        }, {
-            left: "A",
-            right: ["a", "A", "c"]
-        }, {
-            left: "A",
-            right: ["0"]
-        }, {
-            left: "B",
-            right: ["b", "B"]
-        }, {
-            left: "B",
-            right: ["c"]
-        }];
-
-        // generate parsing table
+        const RAW_PRODUCTION_RULES = [
+            new ProductionRule("S", ["a", "A", "B", "b"]),
+            new ProductionRule("A", ["a", "A", "c"]),
+            new ProductionRule("A", ["0"]),
+            new ProductionRule("B", ["b", "B"]),
+            new ProductionRule("B", ["c"])
+        ];
 
         // find the first set of every production rule, which is the set of all
         // terminals that could appear as the first character of that production rule.
         // for a production rule w, this is Fi(w).
         // e.g. if A => Bc and B => d | e, then Fi(Bc) = union(d, e)
         this.PRODUCTION_RULES = _.map(RAW_PRODUCTION_RULES, rule => {
-            return {
-                left: rule.left,
-                right: rule.right,
-                first: this.firstOfProductionRule(rule)
-            };
+            rule.first = this.firstOfProductionRule(rule);
+            return rule;
         });
 
+        // generate parsing table
         // compute the first and follow sets of every nonterminal
         let nonterminalData = _.map(this.NONTERMINALS, nonterminal => {
             return {
@@ -66,7 +78,6 @@ class LL1Parser {
                 follow: this.followOfSymbol(nonterminal)
             };
         });
-
 
         // build parsing table given first and follow sets
         // for table T, T[A,a] contains the rule A => w iff
@@ -191,6 +202,7 @@ class LL1Parser {
      * parsed at the front.
      */
     parse(rawInputList) {
+        // TODO: check that the input list contains only valid symbols
         // we have a list of input symbols (must be terminated with the end
         // character for our parsing to work) and a stack representing the current
         // state of the AST, which naturally starts out with the start symbol
@@ -265,8 +277,6 @@ class LL1Parser {
         };
 
         return parseHelper(baseInput, baseStack, baseTree.root);
-
-        // TODO: check that the input list contains only valid symbols
     }
 }
 
