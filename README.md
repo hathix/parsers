@@ -119,7 +119,6 @@ node dist/app.js
 
 ## Todo's
 
-* Use ES6 (nice to have, but not necessary & incurs additional overhead)
 * Intelligently deduce list of terminals/nonterminals in language from production rules
 * Move helper functions into own module
 * Use more immutable data types instead of built-in JS ones
