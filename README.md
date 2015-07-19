@@ -107,8 +107,14 @@ model it that way anyway.
 
 ## Running
 
+In one Terminal tab:
 ```
-node app.js
+gulp serve
+```
+
+In another, run this as needed:
+```
+node dist/app.js
 ```
 
 ## Todo's
