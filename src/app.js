@@ -37,34 +37,36 @@ class ProductionRule {
  * See https://en.wikipedia.org/wiki/LL_parser.
  */
 class LL1Parser {
-    constructor(){
-        // define the language
-        // TODO: dynamically generate language from given production rules
-        this.TERMINALS = [
-            "a",
-            "b",
-            "c"
-        ];
+    /**
+    * Generates a parser that operates on the given list of ProductionRules.
+    * It infers the language from the production rules and prepares it for
+    * use with parse() on a string of nonterminals.
+    * At least one production rule MUST have the string "S" on the left
+    * -- that's the starting rule.
+    * TODO: refactor so this is more obvious (like have the first rule be
+    * the start rule)
+    */
+    constructor(rawProductionRules){
+        // build the language
+        // nonterminals are all symbols that appear on the left side
+        // TODO: use immutable js types here
+        this.NONTERMINALS = _.union(_.map(
+            rawProductionRules, (rule) => rule.left));
 
-        this.NONTERMINALS = [
-            "S",
-            "A",
-            "B"
-        ];
-
-        const RAW_PRODUCTION_RULES = [
-            new ProductionRule("S", ["a", "A", "B", "b"]),
-            new ProductionRule("A", ["a", "A", "c"]),
-            new ProductionRule("A", ["0"]),
-            new ProductionRule("B", ["b", "B"]),
-            new ProductionRule("B", ["c"])
-        ];
+        // terminals are all symbols that appear on the right side, except
+        // nonterminals and the empty string
+        this.TERMINALS = _(rawProductionRules)
+            .map(rule => rule.right)
+            .squish()
+            .reject(symbol => _.includes(this.NONTERMINALS, symbol)
+                || symbol === this.EMPTY)
+            .value();
 
         // find the first set of every production rule, which is the set of all
         // terminals that could appear as the first character of that production rule.
         // for a production rule w, this is Fi(w).
         // e.g. if A => Bc and B => d | e, then Fi(Bc) = union(d, e)
-        this.PRODUCTION_RULES = _.map(RAW_PRODUCTION_RULES, rule => {
+        this.PRODUCTION_RULES = _.map(rawProductionRules, rule => {
             rule.first = this.firstOfProductionRule(rule);
             return rule;
         });
@@ -114,9 +116,12 @@ class LL1Parser {
     }
 
     // Constants
+    // TODO: extract as global constants so clients can use them too
     get START(){ return "S"; }
     get END(){ return "$"; }
     get EMPTY(){ return "0"; }
+    // TODO: extract this into a parent Parser class because all parsers
+    // will likely reuse this
     get SYMBOLS(){
         return _.union(
             this.TERMINALS,
@@ -280,6 +285,12 @@ class LL1Parser {
     }
 }
 
-let parser = new LL1Parser();
+let parser = new LL1Parser([
+    new ProductionRule("S", ["a", "A", "B", "b"]),
+    new ProductionRule("A", ["a", "A", "c"]),
+    new ProductionRule("A", ["0"]),
+    new ProductionRule("B", ["b", "B"]),
+    new ProductionRule("B", ["c"])
+]);
 let ast = parser.parse("aacbbcb".split(""));
 console.log(JSON.stringify(ast));
