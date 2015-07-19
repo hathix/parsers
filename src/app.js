@@ -218,6 +218,7 @@ var parseTable = generateTable2d(
  * Utility constructor for creating tree nodes with specified values and
  * (by default) an empty list of children.
  */
+// TODO convert this to use es6 class
 function TreeNode(value) {
     this.value = value;
     this.children = [];
