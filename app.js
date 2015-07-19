@@ -338,14 +338,17 @@ function parse(rawInputList) {
             } else {
                 // look up the matching rule in the parse table and place the
                 // right side thereof on the stack
-                // also add all the symbols on the right side to the tree
-                // and move into the leftmost new child (which happens by
-                // default when you drill down into a tree)
                 var rule = parseTable[topStackSymbol][topInputSymbol];
                 return parseHelper(
                     input,
                     stack.pop().pushAll(rule.right),
-                    addChildren(tree, rule.right).select('children').down().leftmost());
+                    // also add all the symbols on the right side to the tree
+                    // and move into the leftmost new child (which happens by
+                    // default when you drill down into a tree)
+                    addChildren(tree, rule.right)
+                        .select('children')
+                        .down()
+                        .leftmost());
             }
         }
     };
