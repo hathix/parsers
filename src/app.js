@@ -1,8 +1,8 @@
-var _ = require('lodash');
-var Immutable = require('immutable');
-var Baobab = require('baobab');
+let _ = require('lodash');
+let Immutable = require('immutable');
+let Baobab = require('baobab');
 
-var util = require("./util");
+let util = require("./util");
 
 /* LL(1) parser, from https://en.wikipedia.org/wiki/LL_parser
  */
@@ -18,10 +18,10 @@ util.addLodashUtilities();
 function firstOfSymbol(symbol) {
     if (_.contains(NONTERMINALS, symbol)) {
         // find production rules that have this nonterminal on left side
-        var validRules = _.filter(
+        let validRules = _.filter(
             PRODUCTION_RULES, rule => rule.left === symbol);
         // find those rules' first symbols
-        var firsts = _.map(validRules, firstOfProductionRule);
+        let firsts = _.map(validRules, firstOfProductionRule);
         return _.squish(firsts);
     } else {
         return [symbol];
@@ -49,14 +49,14 @@ function followOfSymbol(symbol) {
     } else if (_.contains(NONTERMINALS, symbol)) {
         // find production rules that have this nonterminal on right side
         // (but not at the very end)
-        var validRules = _.filter(PRODUCTION_RULES, rule =>
+        let validRules = _.filter(PRODUCTION_RULES, rule =>
             _.includes(_.slice(rule.right, 0, rule.right.length - 1), symbol)
         );
         // find the symbols (terminal or nonterminal)
         // immediately to the right of the target symbol
-        var unresolvedFollows = _.squish(_.map(validRules, rule => {
-            var symbolIndices = _.indicesOf(rule.right, symbol);
-            var rightIndices = _.map(symbolIndices, index => index + 1);
+        let unresolvedFollows = _.squish(_.map(validRules, rule => {
+            let symbolIndices = _.indicesOf(rule.right, symbol);
+            let rightIndices = _.map(symbolIndices, index => index + 1);
             return _.map(rightIndices, index => rule.right[index]);
         }));
         // recursively simplify the nonterminals in this follow set
@@ -68,26 +68,26 @@ function followOfSymbol(symbol) {
 
 
 // define the language
-var TERMINALS = [
+let TERMINALS = [
     "a",
     "b",
     "c"
 ];
 
-var NONTERMINALS = [
+let NONTERMINALS = [
     "S",
     "A",
     "B"
 ];
 
 // special symbols
-var START = "S";
-var END = "$";
-var EMPTY = "0";
+let START = "S";
+let END = "$";
+let EMPTY = "0";
 
-var SYMBOLS = _.union(TERMINALS, NONTERMINALS, [START, END, EMPTY]);
+let SYMBOLS = _.union(TERMINALS, NONTERMINALS, [START, END, EMPTY]);
 
-var PRODUCTION_RULES = [{
+let PRODUCTION_RULES = [{
     left: "S",
     right: ["a", "A", "B", "b"]
 }, {
@@ -125,14 +125,14 @@ PRODUCTION_RULES = _.map(PRODUCTION_RULES, rule => {
  * nonterminal appears on the left.
  */
 function firstOfNonterminal(nonterminal) {
-    var validRules = _.filter(PRODUCTION_RULES, rule =>
+    let validRules = _.filter(PRODUCTION_RULES, rule =>
         rule.left === nonterminal);
-    var firsts = _.map(validRules, rule => rule.first);
+    let firsts = _.map(validRules, rule => rule.first);
     return _.squish(firsts);
 }
 
 // compute the first and follow sets of every nonterminal
-var nonterminalData = _.map(NONTERMINALS, nonterminal => {
+let nonterminalData = _.map(NONTERMINALS, nonterminal => {
     return {
         symbol: nonterminal,
         first: firstOfNonterminal(nonterminal),
@@ -147,18 +147,18 @@ var nonterminalData = _.map(NONTERMINALS, nonterminal => {
 //  - epsilon is in Fi(w) and a is in Fo(A)
 // with an LL(1) parser, T[A,a] is guaranteed to contain at most 1 rule
 // here, T[A,a] contains either a rule or null
-var parseTable = util.generateTable2d(
+let parseTable = util.generateTable2d(
     nonterminalData,
     nonterminal => nonterminal.symbol,
     TERMINALS,
     _.identity,
     (nonterminal, terminal) => {
         // find all rules that have this nonterminal on the left...
-        var nonterminalRules = _.filter(PRODUCTION_RULES, rule =>
+        let nonterminalRules = _.filter(PRODUCTION_RULES, rule =>
             rule.left === nonterminal.symbol);
         // ...and the one that belongs in this cell. Again, there is either 0
         // or 1 rule that can be here.
-        var validRules = _.filter(nonterminalRules, rule =>
+        let validRules = _.filter(nonterminalRules, rule =>
             _.includes(rule.first, terminal) ||
             (_.includes(rule.first, EMPTY) &&
                 _.includes(nonterminal.follow, terminal)));
@@ -186,11 +186,11 @@ function parse(rawInputList) {
     // character for our parsing to work) and a stack representing the current
     // state of the AST, which naturally starts out with the start symbol
     // (which represents the full sentence and the head of the AST)
-    var baseInput = Immutable.List(rawInputList).push(END);
-    var baseStack = Immutable.Stack.of(START);
+    let baseInput = Immutable.List(rawInputList).push(END);
+    let baseStack = Immutable.Stack.of(START);
     // our output will be an abstract syntax tree, the root node of which is
     // the start symbol
-    var baseTree = new Baobab(new util.TreeNode(START), {
+    let baseTree = new Baobab(new util.TreeNode(START), {
         // Baobab options
         asynchronous: false,
         immutable: true
@@ -206,7 +206,7 @@ function parse(rawInputList) {
      * as the element at the top of the stack (i.e. the given tree gets built
      * recursively.
      */
-    var parseHelper = (input, stack, tree) => {
+    let parseHelper = (input, stack, tree) => {
         // console.log(tree.get());
         if (stack.isEmpty()) {
             // done parsing
@@ -215,8 +215,8 @@ function parse(rawInputList) {
             // since we're finished, return the finished tree
             return tree;
         } else {
-            var topStackSymbol = stack.first();
-            var topInputSymbol = input.first();
+            let topStackSymbol = stack.first();
+            let topInputSymbol = input.first();
 
             if (topStackSymbol === topInputSymbol) {
                 // if the stack and input symbols match, they can be removed;
@@ -240,7 +240,7 @@ function parse(rawInputList) {
             } else {
                 // look up the matching rule in the parse table and place the
                 // right side thereof on the stack
-                var rule = parseTable[topStackSymbol][topInputSymbol];
+                let rule = parseTable[topStackSymbol][topInputSymbol];
                 return parseHelper(
                     input,
                     stack.pop().pushAll(rule.right),
@@ -260,5 +260,5 @@ function parse(rawInputList) {
     // TODO: check that the input list contains only valid symbols
 }
 
-var ast = parse("aacbbcb".split(""));
+let ast = parse("aacbbcb".split(""));
 console.log(JSON.stringify(ast));
