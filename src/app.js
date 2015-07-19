@@ -58,8 +58,8 @@ class LL1Parser {
         this.TERMINALS = _(rawProductionRules)
             .map(rule => rule.right)
             .squish()
-            .reject(symbol => _.includes(this.NONTERMINALS, symbol)
-                || symbol === this.EMPTY)
+            .reject(symbol => _.includes(this.NONTERMINALS, symbol) ||
+                symbol === this.EMPTY)
             .value();
 
         // find the first set of every production rule, which is the set of all
