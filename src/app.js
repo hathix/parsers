@@ -177,51 +177,6 @@ var parseTable = util.generateTable2d(
 // console.log(JSON.stringify(parseTable));
 
 /**
- * Utility constructor for creating tree nodes with specified values and
- * (by default) an empty list of children.
- */
-// TODO convert this to use es6 class
-function TreeNode(value) {
-    this.value = value;
-    this.children = [];
-}
-
-// Utility Baobab functions
-/**
- * For TreeNodes in a Baobab tree.
- * Returns the node immediately to the right of the given node. But if the node
- * is already the rightmost child of its parent, returns the sibling of its
- * parent.
- */
-function siblingNode(node) {
-    if (node.isRoot()) {
-        // this node is the root of the tree; just return itself
-        // TODO: throw error?
-        return node;
-    } else if (node === node.rightmost()) {
-        // this node is already the rightmost; try going right on its parent
-        // this requires two "up"'s -- one to get from the node to the list of
-        // children of its parent, and another to get to the parent itself
-        return siblingNode(node.up().up());
-    } else {
-        // standard case -- return the node to the right
-        return node.right();
-    }
-}
-
-/**
- * For TreeNodes in a Baobab tree.
- * Maps the given list of values to a list of new TreeNodes, attaches those
- * as new children of the given node, and returns the node. This mutates
- * the given node.
- */
-function addChildren(node, valueList) {
-    var children = _.map(valueList, value => new TreeNode(value));
-    node.select("children").push(children);
-    return node;
-}
-
-/**
  * Given a list of terminal symbols, parses it into the abstract syntax tree
  * that generated this list. The list should have the first symbol to be
  * parsed at the front.
@@ -235,7 +190,7 @@ function parse(rawInputList) {
     var baseStack = Immutable.Stack.of(START);
     // our output will be an abstract syntax tree, the root node of which is
     // the start symbol
-    var baseTree = new Baobab(new TreeNode(START), {
+    var baseTree = new Baobab(new util.TreeNode(START), {
         // Baobab options
         asynchronous: false,
         immutable: true
@@ -270,7 +225,7 @@ function parse(rawInputList) {
                 return parseHelper(
                     input.shift(),
                     stack.pop(),
-                    siblingNode(tree));
+                    util.siblingNode(tree));
             } else if (topStackSymbol === EMPTY) {
                 // an empty symbol can simply be removed from the stack
                 // because it is, well, empty
@@ -281,7 +236,7 @@ function parse(rawInputList) {
                 return parseHelper(
                     input,
                     stack.pop(),
-                    siblingNode(tree));
+                    util.siblingNode(tree));
             } else {
                 // look up the matching rule in the parse table and place the
                 // right side thereof on the stack
@@ -292,7 +247,7 @@ function parse(rawInputList) {
                     // also add all the symbols on the right side to the tree
                     // and move into the leftmost new child (which happens by
                     // default when you drill down into a tree)
-                    addChildren(tree, rule.right)
+                    util.addChildren(tree, rule.right)
                         .select('children')
                         .down()
                         .leftmost());
