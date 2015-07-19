@@ -291,7 +291,7 @@ function parse(rawInputList) {
     var baseTree = new Baobab(new TreeNode(START), {
         // Baobab options
         asynchronous: false,
-        // immutable: true
+        immutable: true
     });
 
     /**
