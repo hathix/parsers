@@ -68,24 +68,24 @@ function followOfSymbol(symbol) {
 
 
 // define the language
-let TERMINALS = [
+const TERMINALS = [
     "a",
     "b",
     "c"
 ];
 
-let NONTERMINALS = [
+const NONTERMINALS = [
     "S",
     "A",
     "B"
 ];
 
 // special symbols
-let START = "S";
-let END = "$";
-let EMPTY = "0";
+const START = "S";
+const END = "$";
+const EMPTY = "0";
 
-let SYMBOLS = _.union(TERMINALS, NONTERMINALS, [START, END, EMPTY]);
+const SYMBOLS = _.union(TERMINALS, NONTERMINALS, [START, END, EMPTY]);
 
 let PRODUCTION_RULES = [{
     left: "S",
