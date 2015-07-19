@@ -62,9 +62,7 @@ function firstOfSymbol(symbol) {
             return rule.left === symbol;
         });
         // find those rules' first symbols
-        var firsts = _.map(validRules, function (rule) {
-            return firstOfProductionRule(rule);
-        });
+        var firsts = _.map(validRules, firstOfProductionRule);
         return _.squish(firsts);
     } else {
         return [symbol];
@@ -188,9 +186,7 @@ var nonterminalData = _.map(NONTERMINALS, function (nonterminal) {
 // here, T[A,a] contains either a rule or null
 var parseTable = generateTable2d(nonterminalData, function (nonterminal) {
     return nonterminal.symbol;
-}, TERMINALS, function (terminal) {
-    return terminal;
-}, function (nonterminal, terminal) {
+}, TERMINALS, _.identity, function (nonterminal, terminal) {
     // find all rules that have this nonterminal on the left...
     var nonterminalRules = _.filter(PRODUCTION_RULES, function (rule) {
         return rule.left === nonterminal.symbol;

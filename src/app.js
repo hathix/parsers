@@ -11,16 +11,14 @@ _.mixin({
     // unions all the component arrays of a list.
     // _.squish([[1,2],[2,3]]) == [1,2,3]
     'squish': function(list) {
-        return _.reduce(list, function(a, b) {
-            return _.union(a, b);
-        }, []);
+        return _.reduce(list, (a, b) => _.union(a, b), []);
     },
 
     // returns all indices where an element occurs in a list
     // _.indicesOf([1,2,3,2], 2) == [1, 3]
     // _.indicesOf([1,2,3,2], 4) == []
     'indicesOf': function(list, needle) {
-        return _.reduce(list, function(memo, value, index) {
+        return _.reduce(list, (memo, value, index) => {
             if (_.isEqual(value, needle)) {
                 memo.push(index);
             }
@@ -38,9 +36,9 @@ _.mixin({
 function generateTable2d(rowValues, rowLabelFn, columnValues,
     columnLabelFn, cellFn) {
     var table = {};
-    _.each(rowValues, function(rowValue) {
+    _.each(rowValues, rowValue => {
         var currentRow = table[rowLabelFn(rowValue)] = {};
-        _.each(columnValues, function(columnValue) {
+        _.each(columnValues, columnValue => {
             currentRow[columnLabelFn(columnValue)] =
                 cellFn(rowValue, columnValue);
         });
@@ -58,13 +56,10 @@ function generateTable2d(rowValues, rowLabelFn, columnValues,
 function firstOfSymbol(symbol) {
     if (_.contains(NONTERMINALS, symbol)) {
         // find production rules that have this nonterminal on left side
-        var validRules = _.filter(PRODUCTION_RULES, function(rule) {
-            return rule.left === symbol;
-        });
+        var validRules = _.filter(
+            PRODUCTION_RULES, rule => rule.left === symbol);
         // find those rules' first symbols
-        var firsts = _.map(validRules, function(rule) {
-            return firstOfProductionRule(rule);
-        });
+        var firsts = _.map(validRules, firstOfProductionRule);
         return _.squish(firsts);
     } else {
         return [symbol];
@@ -92,21 +87,15 @@ function followOfSymbol(symbol) {
     } else if (_.contains(NONTERMINALS, symbol)) {
         // find production rules that have this nonterminal on right side
         // (but not at the very end)
-        var validRules = _.filter(PRODUCTION_RULES, function(rule) {
-            return _.includes(
-                _.slice(rule.right, 0, rule.right.length - 1),
-                symbol);
-        });
+        var validRules = _.filter(PRODUCTION_RULES, rule =>
+            _.includes(_.slice(rule.right, 0, rule.right.length - 1), symbol)
+        );
         // find the symbols (terminal or nonterminal)
         // immediately to the right of the target symbol
-        var unresolvedFollows = _.squish(_.map(validRules, function(rule) {
+        var unresolvedFollows = _.squish(_.map(validRules, rule => {
             var symbolIndices = _.indicesOf(rule.right, symbol);
-            var rightIndices = _.map(symbolIndices, function(index) {
-                return index + 1;
-            });
-            return _.map(rightIndices, function(index) {
-                return rule.right[index];
-            });
+            var rightIndices = _.map(symbolIndices, index => index + 1);
+            return _.map(rightIndices, index => rule.right[index]);
         }));
         // recursively simplify the nonterminals in this follow set
         return _.squish(_.map(unresolvedFollows, followOfSymbol));
@@ -160,7 +149,7 @@ var PRODUCTION_RULES = [{
 // terminals that could appear as the first character of that production rule.
 // for a production rule w, this is Fi(w).
 // e.g. if A => Bc and B => d | e, then Fi(Bc) = union(d, e)
-PRODUCTION_RULES = _.map(PRODUCTION_RULES, function(rule) {
+PRODUCTION_RULES = _.map(PRODUCTION_RULES, rule => {
     return {
         left: rule.left,
         right: rule.right,
@@ -174,17 +163,14 @@ PRODUCTION_RULES = _.map(PRODUCTION_RULES, function(rule) {
  * nonterminal appears on the left.
  */
 function firstOfNonterminal(nonterminal) {
-    var validRules = _.filter(PRODUCTION_RULES, function(rule) {
-        return rule.left === nonterminal;
-    });
-    var firsts = _.map(validRules, function(rule) {
-        return rule.first;
-    });
+    var validRules = _.filter(PRODUCTION_RULES, rule =>
+        rule.left === nonterminal);
+    var firsts = _.map(validRules, rule => rule.first);
     return _.squish(firsts);
 }
 
 // compute the first and follow sets of every nonterminal
-var nonterminalData = _.map(NONTERMINALS, function(nonterminal) {
+var nonterminalData = _.map(NONTERMINALS, nonterminal => {
     return {
         symbol: nonterminal,
         first: firstOfNonterminal(nonterminal),
@@ -199,32 +185,32 @@ var nonterminalData = _.map(NONTERMINALS, function(nonterminal) {
 //  - epsilon is in Fi(w) and a is in Fo(A)
 // with an LL(1) parser, T[A,a] is guaranteed to contain at most 1 rule
 // here, T[A,a] contains either a rule or null
-var parseTable = generateTable2d(nonterminalData, function(nonterminal) {
-    return nonterminal.symbol;
-}, TERMINALS, function(terminal) {
-    return terminal;
-}, function(nonterminal, terminal) {
-    // find all rules that have this nonterminal on the left...
-    var nonterminalRules = _.filter(PRODUCTION_RULES, function(rule) {
-        return rule.left === nonterminal.symbol;
-    });
-    // ...and the one that belongs in this cell. Again, there is either 0
-    // or 1 rule that can be here.
-    var validRules = _.filter(nonterminalRules, function(rule) {
-        return _.includes(rule.first, terminal) ||
+var parseTable = generateTable2d(
+    nonterminalData,
+    nonterminal => nonterminal.symbol,
+    TERMINALS,
+    _.identity,
+    (nonterminal, terminal) => {
+        // find all rules that have this nonterminal on the left...
+        var nonterminalRules = _.filter(PRODUCTION_RULES, rule =>
+            rule.left === nonterminal.symbol);
+        // ...and the one that belongs in this cell. Again, there is either 0
+        // or 1 rule that can be here.
+        var validRules = _.filter(nonterminalRules, rule =>
+            _.includes(rule.first, terminal) ||
             (_.includes(rule.first, EMPTY) &&
-                _.includes(nonterminal.follow, terminal));
-    });
-    if (_.isEmpty(validRules)) {
-        // there is no defined behavior for [A, a]
-        return null;
-    } else {
-        // validRules should only have 1 element, so grab it; this element
-        // is a production rule A => w
-        // TODO: throw error if validRules has >1 elements
-        return _.head(validRules);
+                _.includes(nonterminal.follow, terminal)));
+        if (_.isEmpty(validRules)) {
+            // there is no defined behavior for [A, a]
+            return null;
+        } else {
+            // validRules should only have 1 element, so grab it; this element
+            // is a production rule A => w
+            // TODO: throw error if validRules has >1 elements
+            return _.head(validRules);
+        }
     }
-});
+);
 
 // console.log(JSON.stringify(parseTable));
 
@@ -267,9 +253,7 @@ function siblingNode(node) {
  * the given node.
  */
 function addChildren(node, valueList) {
-    var children = _.map(valueList, function(value) {
-        return new TreeNode(value);
-    });
+    var children = _.map(valueList, value => new TreeNode(value));
     node.select("children").push(children);
     return node;
 }
@@ -304,7 +288,7 @@ function parse(rawInputList) {
      * as the element at the top of the stack (i.e. the given tree gets built
      * recursively.
      */
-    var parseHelper = function(input, stack, tree) {
+    var parseHelper = (input, stack, tree) => {
         // console.log(tree.get());
         if (stack.isEmpty()) {
             // done parsing
