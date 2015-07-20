@@ -3,7 +3,6 @@ let Immutable = require('immutable');
 let Baobab = require('baobab');
 
 let util = require("./util");
-util.addLodashUtilities();
 
 /**
  * A rule for context-free grammars that specifies what string of nonterminals
@@ -20,7 +19,7 @@ class ProductionRule {
      */
     constructor(left, right) {
         this.left = left;
-        this.right = right;
+        this.right = Immutable.List(right);
     }
 
     toString() {
@@ -47,41 +46,28 @@ class LL1Parser {
      * the start rule)
      */
     constructor(rawProductionRules) {
+        let productionRules = Immutable.Set(rawProductionRules);
         // build the language
         // nonterminals are all symbols that appear on the left side
-        // TODO: use immutable js types here
-        this.NONTERMINALS = _(rawProductionRules)
-            .map(rule => rule.left)
-            .union()
-            .value();
+        this.NONTERMINALS = productionRules.map(rule => rule.left);
 
         // terminals are all symbols that appear on the right side, except
         // nonterminals and the empty string
-        this.TERMINALS = _(rawProductionRules)
+        this.TERMINALS = productionRules
             .map(rule => rule.right)
-            .squish()
-            .reject(symbol => _.includes(this.NONTERMINALS, symbol) ||
-                symbol === this.EMPTY)
-            .value();
+            .flatten()
+            .filterNot(symbol => this.NONTERMINALS.includes(symbol))
+            .filterNot(symbol => symbol === this.EMPTY);
 
         // find the first set of every production rule, which is the set of all
         // terminals that could appear as the first character of that
         // production rule.
         // for a production rule w, this is Fi(w).
         // e.g. if A => Bc and B => d | e, then Fi(Bc) = union(d, e)
-        this.PRODUCTION_RULES = _.map(rawProductionRules, rule => {
-            rule.first = this.firstOfProductionRule(rule);
-            return rule;
-        });
-
-        // generate parsing table
-        // compute the first and follow sets of every nonterminal
-        let nonterminalData = _.map(this.NONTERMINALS, nonterminal => {
-            return {
-                symbol: nonterminal,
-                first: this.firstOfNonterminal(nonterminal),
-                follow: this.followOfSymbol(nonterminal)
-            };
+        this.PRODUCTION_RULES = productionRules.map(rule => {
+            let newRule = _.clone(rule);
+            newRule.first = this.firstOfProductionRule(rule);
+            return newRule;
         });
 
         // build parsing table given first and follow sets
@@ -89,32 +75,36 @@ class LL1Parser {
         //  - a is in Fi(w), or
         //  - epsilon is in Fi(w) and a is in Fo(A)
         // with an LL(1) parser, T[A,a] is guaranteed to contain at most 1 rule
-        // here, T[A,a] contains either a rule or null
-        this.parseTable = util.generateTable2d(
-            nonterminalData,
-            nonterminal => nonterminal.symbol,
-            this.TERMINALS,
-            _.identity, (nonterminal, terminal) => {
-                // find all rules that have this nonterminal on the left...
-                let nonterminalRules = _.filter(this.PRODUCTION_RULES, rule =>
-                    rule.left === nonterminal.symbol);
-                // ...and the one that belongs in this cell. Again, there is
-                // either 0 or 1 rule that can be here.
-                let validRules = _.filter(nonterminalRules, rule =>
-                    _.includes(rule.first, terminal) ||
-                    (_.includes(rule.first, this.EMPTY) &&
-                    _.includes(nonterminal.follow, terminal)));
-                if (_.isEmpty(validRules)) {
-                    // there is no defined behavior for [A, a]
-                    return null;
-                } else {
-                    // validRules should only have 1 element, so grab it;
-                    // this element is a production rule A => w
-                    // TODO: throw error if validRules has >1 elements
-                    return _.head(validRules);
-                }
-            }
-        );
+        // here, T[A,a] contains either a rule or undefined
+        // this will be a doubly-nested Map (a Map where the values are
+        // themselves Maps.) you would access a rule A => w with
+        // map.get(A).get(a) per the rules above.
+        this.parseTable = this.NONTERMINALS
+            .toMap()
+            .map(nonterminal =>
+                // the value of this first map should be a map that maps
+                // a symbol to a particular production rule
+                this.TERMINALS
+                    .toMap()
+                    .map(terminal =>
+                        // now that we have the terminal and nonterminal
+                        // (the "row" and "column" values for this "table"),
+                        // find the appropriate production rule; there should
+                        // be either 0 or 1 matching rules by definition of an
+                        // LL(1) parser
+                        // per the guidelines above, the appropriate rule
+                        // must have the nonterminal on the left
+                        // and fulfill one of the specified critera
+                        this.PRODUCTION_RULES
+                            .filter(rule => rule.left === nonterminal)
+                            .filter(rule =>
+                                rule.first.includes(terminal) ||
+                                    (rule.first.includes(this.EMPTY) &&
+                                        this.followOfSymbol(nonterminal)
+                                            .includes(terminal)))
+                            .first()
+                    )
+            );
     }
 
     // Constants
@@ -131,7 +121,7 @@ class LL1Parser {
     // TODO: extract this into a parent Parser class because all parsers
     // will likely reuse this
     get SYMBOLS() {
-        return _.union(
+        return Immutable.Set.of(
             this.TERMINALS,
             this.NONTERMINALS,
             [this.START, this.END, this.EMPTY]
@@ -145,16 +135,16 @@ class LL1Parser {
      * following production rules.
      */
     firstOfSymbol(symbol) {
-        if (_.contains(this.NONTERMINALS, symbol)) {
+        if (this.NONTERMINALS.contains(symbol)) {
             // find production rules that have this nonterminal on left side
             // and grab their first symbols
-            return _(this.PRODUCTION_RULES)
+            return this.PRODUCTION_RULES
                 .filter(rule => rule.left === symbol)
                 .map(rule => this.firstOfProductionRule(rule))
-                .squish()
-                .value();
+                .flatten()
         } else {
-            return [symbol];
+            // for a terminal a, Fi(a) = [a]
+            return Immutable.Set.of(symbol);
         }
     }
 
@@ -163,7 +153,7 @@ class LL1Parser {
      * For a rule A => w, this returns Fi(w).
      */
     firstOfProductionRule(rule) {
-        return this.firstOfSymbol(_.head(rule.right));
+        return this.firstOfSymbol(rule.right.first());
     }
 
     /**
@@ -176,32 +166,37 @@ class LL1Parser {
         if (symbol === this.START) {
             // by definition, Fo(S) = $, where S = start symbol and
             // $ = end symbol
-            return [this.END];
-        } else if (_.contains(this.NONTERMINALS, symbol)) {
+            return Immutable.Set.of(this.END);
+        } else if (this.NONTERMINALS.includes(symbol)) {
             // find production rules that have this nonterminal on right side
             // (but not at the very end)
-            let validRules = _.filter(this.PRODUCTION_RULES, rule =>
-                _(rule.right)
-                .slice(0, rule.right.length - 1)
-                .includes(symbol)
+            let validRules = this.PRODUCTION_RULES.filter(rule =>
+                rule.right
+                    .butLast()
+                    .includes(symbol)
             );
             // find the symbols (terminal or nonterminal)
             // immediately to the right of the target symbol
-            let unresolvedFollows = _(validRules)
+            let unresolvedFollows = validRules
                 .map(rule => {
-                   let symbolIndices = _.indicesOf(rule.right, symbol);
-                   let rightIndices = _.map(symbolIndices, index => index + 1);
-                   return _.map(rightIndices, index => rule.right[index]);
+                    // find indices where target symbol is, except indices
+                    // at the end of the list, because we want to find symbols
+                    // to the right of these indices
+                    let symbolIndices = Immutable.Range(0, rule.right.size)
+                        .butLast()
+                        .filter(index => rule.right.get(index) === symbol);
+                    // find indices immediately to the right
+                    let rightIndices = symbolIndices.map(index => index + 1);
+                    // look up the symbols at those indices
+                    return rightIndices.map(index => rule.right.get(index));
                })
-               .squish()
-               .value();
+               .flatten();
             // recursively simplify the nonterminals in this follow set
-            return _(unresolvedFollows)
+            return unresolvedFollows
                 .map(symbol => this.followOfSymbol(symbol))
-                .squish()
-                .value();
+                .flatten();
         } else {
-            return [symbol];
+            return Immutable.Set.of(symbol);
         }
     }
 
@@ -211,11 +206,10 @@ class LL1Parser {
      * where the nonterminal appears on the left.
      */
     firstOfNonterminal(nonterminal) {
-        return _(this.PRODUCTION_RULES)
+        return this.PRODUCTION_RULES
             .filter(rule => rule.left === nonterminal)
             .map(rule => rule.first)
-            .squish()
-            .value();
+            .flatten();
     }
 
     /**
@@ -291,14 +285,16 @@ class LL1Parser {
                 } else {
                     // look up the matching rule in the parse table and place
                     // the right side thereof on the stack
-                    let rule = this.parseTable[topStackSymbol][topInputSymbol];
+                    let rule = this.parseTable
+                        .get(topStackSymbol)
+                        .get(topInputSymbol);
                     return parseHelper(
                         input,
                         stack.pop().pushAll(rule.right),
                         // also add all the symbols on the right side to the
                         // tree and move into the leftmost new child (which
                         // happens by default when you drill down into a tree)
-                        util.addChildren(tree, rule.right)
+                        util.addChildren(tree, rule.right.toArray())
                             .select('children')
                             .down()
                             .leftmost());
