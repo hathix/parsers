@@ -103,13 +103,13 @@ class LL1Parser {
                 let validRules = _.filter(nonterminalRules, rule =>
                     _.includes(rule.first, terminal) ||
                     (_.includes(rule.first, this.EMPTY) &&
-                        _.includes(nonterminal.follow, terminal)));
+                    _.includes(nonterminal.follow, terminal)));
                 if (_.isEmpty(validRules)) {
                     // there is no defined behavior for [A, a]
                     return null;
                 } else {
-                    // validRules should only have 1 element, so grab it; this element
-                    // is a production rule A => w
+                    // validRules should only have 1 element, so grab it;
+                    // this element is a production rule A => w
                     // TODO: throw error if validRules has >1 elements
                     return _.head(validRules);
                 }
@@ -126,32 +126,33 @@ class LL1Parser {
         return "$";
     }
     get EMPTY() {
-            return "0";
-        }
-        // TODO: extract this into a parent Parser class because all parsers
-        // will likely reuse this
+        return "0";
+    }
+    // TODO: extract this into a parent Parser class because all parsers
+    // will likely reuse this
     get SYMBOLS() {
         return _.union(
             this.TERMINALS,
-            this.NONTERMINALS, [this.START, this.END, this.EMPTY]
+            this.NONTERMINALS,
+            [this.START, this.END, this.EMPTY]
         );
     }
 
     /**
      * Returns the first set of a symbol.
      * For a terminal a, Fi(a) = [a].
-     * For a nonterminal A, this recursively reduces A into terminals by following
-     * production rules.
+     * For a nonterminal A, this recursively reduces A into terminals by
+     * following production rules.
      */
     firstOfSymbol(symbol) {
         if (_.contains(this.NONTERMINALS, symbol)) {
             // find production rules that have this nonterminal on left side
-            let validRules = _.filter(
-                this.PRODUCTION_RULES, rule => rule.left === symbol);
-            // find those rules' first symbols
-            let firsts = _.map(validRules, rule =>
-                this.firstOfProductionRule(rule));
-            return _.squish(firsts);
+            // and grab their first symbols
+            return _(this.PRODUCTION_RULES)
+                .filter(rule => rule.left === symbol)
+                .map(rule => this.firstOfProductionRule(rule))
+                .squish()
+                .value();
         } else {
             return [symbol];
         }
@@ -168,93 +169,110 @@ class LL1Parser {
     /**
      * Returns the follow set of a symbol.
      * For a terminal a, Fo(a) = [a].
-     * For a nonterminal A, this recursively reduces A into terminals by following
-     * production rules.
+     * For a nonterminal A, this recursively reduces A into terminals by
+     * following production rules.
      */
     followOfSymbol(symbol) {
         if (symbol === this.START) {
-            // by definition, Fo(S) = $, where S = start symbol and $ = end symbol
+            // by definition, Fo(S) = $, where S = start symbol and
+            // $ = end symbol
             return [this.END];
         } else if (_.contains(this.NONTERMINALS, symbol)) {
             // find production rules that have this nonterminal on right side
             // (but not at the very end)
             let validRules = _.filter(this.PRODUCTION_RULES, rule =>
-                _.includes(_.slice(rule.right, 0, rule.right.length - 1), symbol)
+                _(rule.right)
+                .slice(0, rule.right.length - 1)
+                .includes(symbol)
             );
             // find the symbols (terminal or nonterminal)
             // immediately to the right of the target symbol
-            let unresolvedFollows = _.squish(_.map(validRules, rule => {
-                let symbolIndices = _.indicesOf(rule.right, symbol);
-                let rightIndices = _.map(symbolIndices, index => index + 1);
-                return _.map(rightIndices, index => rule.right[index]);
-            }));
+            let unresolvedFollows = _(validRules)
+                .map(rule => {
+                   let symbolIndices = _.indicesOf(rule.right, symbol);
+                   let rightIndices = _.map(symbolIndices, index => index + 1);
+                   return _.map(rightIndices, index => rule.right[index]);
+               })
+               .squish()
+               .value();
             // recursively simplify the nonterminals in this follow set
-            return _.squish(_.map(unresolvedFollows, (symbol) =>
-                this.followOfSymbol(symbol)));
+            return _(unresolvedFollows)
+                .map(symbol => this.followOfSymbol(symbol))
+                .squish()
+                .value();
         } else {
             return [symbol];
         }
     }
 
     /*
-     * From the production rules find the first-set of every nonterminal, which is
-     * the union of all the first sets of all the production rules where the
-     * nonterminal appears on the left.
+     * From the production rules find the first-set of every nonterminal,
+     * which is the union of all the first sets of all the production rules
+     * where the nonterminal appears on the left.
      */
     firstOfNonterminal(nonterminal) {
-        let validRules = _.filter(this.PRODUCTION_RULES, rule =>
-            rule.left === nonterminal);
-        let firsts = _.map(validRules, rule => rule.first);
-        return _.squish(firsts);
+        return _(this.PRODUCTION_RULES)
+            .filter(rule => rule.left === nonterminal)
+            .map(rule => rule.first)
+            .squish()
+            .value();
     }
 
     /**
-     * Given a list of terminal symbols, parses it into the abstract syntax tree
-     * that generated this list. The list should have the first symbol to be
-     * parsed at the front.
+     * Given a list of terminal symbols, parses it into the abstract syntax
+     * tree that generated this list. The list should have the first symbol to
+     * be parsed at the front.
      */
     parse(rawInputList) {
         // TODO: check that the input list contains only valid symbols
         // we have a list of input symbols (must be terminated with the end
-        // character for our parsing to work) and a stack representing the current
-        // state of the AST, which naturally starts out with the start symbol
-        // (which represents the full sentence and the head of the AST)
+        // character for our parsing to work) and a stack representing the
+        // current state of the AST, which naturally starts out with the start
+        // symbol (which represents the full sentence and the head of the AST)
         let baseInput = Immutable.List(rawInputList).push(this.END);
         let baseStack = Immutable.Stack.of(this.START);
-        // our output will be an abstract syntax tree, the root node of which is
-        // the start symbol
+        // our output will be an abstract syntax tree, the root node of which
+        // is the start symbol
         let baseTree = new Baobab(new util.TreeNode(this.START), {
             // Baobab options
+            // baobab publishes updates async by default; using promises or
+            // callbacks would make the code really messy so just disable that
             asynchronous: false,
+            // there's no difference by including immutability but it fits
+            // the theme here
             immutable: true
         });
 
         /**
          * Parses the given input (Immutable.List) using the given stack
-         * (Immutable.Stack) and uses this to build up the given abstract syntax
-         * tree (Baobab).
+         * (Immutable.Stack) and uses this to build up the given abstract
+         * syntax tree (Baobab), returning null if the given input symbols
+         * cannot be generated by this parser's grammar.
          * The given tree should be a Baobab cursor; if you have a Baobab tree
          * just access its "root" field.
          * The root of the given tree should have the same value
-         * as the element at the top of the stack (i.e. the given tree gets built
-         * recursively.
+         * as the element at the top of the stack (i.e. the given tree gets
+         * built recursively.
          */
         let parseHelper = (input, stack, tree) => {
             // console.log(tree.get());
             if (stack.isEmpty()) {
                 // done parsing
-                // if the original input was valid, input should be no more than
-                // the end symbol
-                // since we're finished, return the finished tree
-                return tree;
+                // if the original input was valid, input should be no more
+                // than the end symbol
+                if (input.equals(Immutable.List.of(this.END))) {
+                    return tree;
+                } else {
+                    return null;
+                }
             } else {
                 let topStackSymbol = stack.first();
                 let topInputSymbol = input.first();
 
                 if (topStackSymbol === topInputSymbol) {
-                    // if the stack and input symbols match, they can be removed;
-                    // the current node in the tree is a leaf, so move on to its
-                    // sibling
+                    // if the stack and input symbols match, they can be
+                    // removed; the current node in the tree is a leaf, so
+                    // move on to its sibling
                     return parseHelper(
                         input.shift(),
                         stack.pop(),
@@ -264,26 +282,26 @@ class LL1Parser {
                     // because it is, well, empty
                     // the empty symbol is a leaf, so move on to its sibling
                     // -- which will be the sibling of its parent because the
-                    // empty sibling is always the only child of its parent and,
-                    // therefore, the rightmost sibling thereof
+                    // empty sibling is always the only child of its parent
+                    // and, therefore, the rightmost sibling thereof
                     return parseHelper(
                         input,
                         stack.pop(),
                         util.siblingNode(tree));
                 } else {
-                    // look up the matching rule in the parse table and place the
-                    // right side thereof on the stack
+                    // look up the matching rule in the parse table and place
+                    // the right side thereof on the stack
                     let rule = this.parseTable[topStackSymbol][topInputSymbol];
                     return parseHelper(
                         input,
                         stack.pop().pushAll(rule.right),
-                        // also add all the symbols on the right side to the tree
-                        // and move into the leftmost new child (which happens by
-                        // default when you drill down into a tree)
+                        // also add all the symbols on the right side to the
+                        // tree and move into the leftmost new child (which
+                        // happens by default when you drill down into a tree)
                         util.addChildren(tree, rule.right)
-                        .select('children')
-                        .down()
-                        .leftmost());
+                            .select('children')
+                            .down()
+                            .leftmost());
                 }
             }
         };
