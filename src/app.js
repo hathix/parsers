@@ -50,8 +50,10 @@ class LL1Parser {
         // build the language
         // nonterminals are all symbols that appear on the left side
         // TODO: use immutable js types here
-        this.NONTERMINALS = _.union(_.map(
-            rawProductionRules, (rule) => rule.left));
+        this.NONTERMINALS = _(rawProductionRules)
+            .map(rule => rule.left)
+            .union()
+            .value();
 
         // terminals are all symbols that appear on the right side, except
         // nonterminals and the empty string
@@ -63,7 +65,8 @@ class LL1Parser {
             .value();
 
         // find the first set of every production rule, which is the set of all
-        // terminals that could appear as the first character of that production rule.
+        // terminals that could appear as the first character of that
+        // production rule.
         // for a production rule w, this is Fi(w).
         // e.g. if A => Bc and B => d | e, then Fi(Bc) = union(d, e)
         this.PRODUCTION_RULES = _.map(rawProductionRules, rule => {
@@ -142,7 +145,7 @@ class LL1Parser {
             let validRules = _.filter(
                 this.PRODUCTION_RULES, rule => rule.left === symbol);
             // find those rules' first symbols
-            let firsts = _.map(validRules, (rule) =>
+            let firsts = _.map(validRules, rule =>
                 this.firstOfProductionRule(rule));
             return _.squish(firsts);
         } else {

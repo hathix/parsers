@@ -117,6 +117,15 @@ In another, run this as needed:
 node dist/app.js
 ```
 
+## Technologies used
+
+Lots and lots of functional programming here...
+
+* ES6 (aka the upcoming version of JavaScript)
+* Facebook's Immutable.js library for immutable data types
+* Baobab for immutable trees
+* Lodash for functional utility functions
+
 ## Todo's
 
 * Intelligently deduce list of terminals/nonterminals in language from production rules
