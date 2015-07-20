@@ -6,24 +6,24 @@ let util = require("./util");
 util.addLodashUtilities();
 
 /**
-* A rule for context-free grammars that specifies what string of nonterminals
-* and terminals can replace a nonterminal wherever the nonterminal appears.
-* e.g., for "A => aB", wherever "A" appears it can be replaced with "aB".
-*
-*/
+ * A rule for context-free grammars that specifies what string of nonterminals
+ * and terminals can replace a nonterminal wherever the nonterminal appears.
+ * e.g., for "A => aB", wherever "A" appears it can be replaced with "aB".
+ *
+ */
 class ProductionRule {
     /**
-    * Generates a production rule with the given nonterminal (String) on the
-    * arrow's left side and the given string of nonterminals and terminals
-    * (String array) on the right side.
-    * This is represented as A => w.
-    */
-    constructor(left, right){
+     * Generates a production rule with the given nonterminal (String) on the
+     * arrow's left side and the given string of nonterminals and terminals
+     * (String array) on the right side.
+     * This is represented as A => w.
+     */
+    constructor(left, right) {
         this.left = left;
         this.right = right;
     }
 
-    toString(){
+    toString() {
         return this.left + "=>" + this.right.join(" ");
     }
 }
@@ -38,15 +38,15 @@ class ProductionRule {
  */
 class LL1Parser {
     /**
-    * Generates a parser that operates on the given list of ProductionRules.
-    * It infers the language from the production rules and prepares it for
-    * use with parse() on a string of nonterminals.
-    * At least one production rule MUST have the string "S" on the left
-    * -- that's the starting rule.
-    * TODO: refactor so this is more obvious (like have the first rule be
-    * the start rule)
-    */
-    constructor(rawProductionRules){
+     * Generates a parser that operates on the given list of ProductionRules.
+     * It infers the language from the production rules and prepares it for
+     * use with parse() on a string of nonterminals.
+     * At least one production rule MUST have the string "S" on the left
+     * -- that's the starting rule.
+     * TODO: refactor so this is more obvious (like have the first rule be
+     * the start rule)
+     */
+    constructor(rawProductionRules) {
         // build the language
         // nonterminals are all symbols that appear on the left side
         // TODO: use immutable js types here
@@ -94,13 +94,12 @@ class LL1Parser {
             nonterminalData,
             nonterminal => nonterminal.symbol,
             this.TERMINALS,
-            _.identity,
-            (nonterminal, terminal) => {
+            _.identity, (nonterminal, terminal) => {
                 // find all rules that have this nonterminal on the left...
                 let nonterminalRules = _.filter(this.PRODUCTION_RULES, rule =>
                     rule.left === nonterminal.symbol);
-                // ...and the one that belongs in this cell. Again, there is either 0
-                // or 1 rule that can be here.
+                // ...and the one that belongs in this cell. Again, there is
+                // either 0 or 1 rule that can be here.
                 let validRules = _.filter(nonterminalRules, rule =>
                     _.includes(rule.first, terminal) ||
                     (_.includes(rule.first, this.EMPTY) &&
@@ -120,16 +119,21 @@ class LL1Parser {
 
     // Constants
     // TODO: extract as global constants so clients can use them too
-    get START(){ return "S"; }
-    get END(){ return "$"; }
-    get EMPTY(){ return "0"; }
-    // TODO: extract this into a parent Parser class because all parsers
-    // will likely reuse this
-    get SYMBOLS(){
+    get START() {
+        return "S";
+    }
+    get END() {
+        return "$";
+    }
+    get EMPTY() {
+            return "0";
+        }
+        // TODO: extract this into a parent Parser class because all parsers
+        // will likely reuse this
+    get SYMBOLS() {
         return _.union(
             this.TERMINALS,
-            this.NONTERMINALS,
-            [this.START, this.END, this.EMPTY]
+            this.NONTERMINALS, [this.START, this.END, this.EMPTY]
         );
     }
 
@@ -283,7 +287,6 @@ class LL1Parser {
                 }
             }
         };
-
         return parseHelper(baseInput, baseStack, baseTree.root);
     }
 }
