@@ -121,7 +121,7 @@ node dist/app.js
 
 Lots and lots of functional programming here...
 
-* ES6 (aka the upcoming version of JavaScript)
+* ES6 (the upcoming version of JavaScript)
 * Facebook's Immutable.js library for immutable data types
 * Baobab for immutable trees
 * Lodash for functional utility functions
@@ -134,5 +134,6 @@ Lots and lots of functional programming here...
 
 ## References
 
-* http://www.jflap.org/tutorial/grammar/LL/index.html
-* https://en.wikipedia.org/wiki/LL_parser#Constructing_an_LL.28k.29_parsing_table
+* Theory behind an LL(1) parser: http://www.jflap.org/tutorial/grammar/LL/index.html
+* Example of LL(1) parser: https://en.wikipedia.org/wiki/LL_parser#Constructing_an_LL.28k.29_parsing_table
+* Compilers & parsers: http://web.stanford.edu/class/archive/cs/cs143/cs143.1128/
